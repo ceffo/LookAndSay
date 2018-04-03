@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "LookAndSay": {
+      "commandName": "Project",
+      "commandLineArgs": "-s 33 -i 70 -m 20 -r Log"
+    }
+  }
+}
