@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace SelfDescSuite
+namespace LookAndSay
 {
-    public static class LookAndSay
+    public static class StringExtensions
     {
         /// <summary>
         /// Describes the input string by outputing 
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        public static string Describe(string input)
+        public static string Describe(this string input)
         {
             if (input.Length == 0) return string.Empty;
             const char stop = (char)1 ;
@@ -23,13 +23,14 @@ namespace SelfDescSuite
 
             foreach (var chr in input.Skip(1) + stop)
             {
-                if (chr != repeat)
+                if (chr == repeat)
+                    ++times;
+                else
                 {
                     sb.Append(times.ToString() + repeat);
                     repeat = chr;
                     times = 1;
                 }
-                else ++times;
             }
 
             return sb.ToString();

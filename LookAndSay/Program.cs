@@ -1,84 +1,54 @@
-﻿using CommandLineParser.Core;
+﻿
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using CommandLine;
+using CommandLine.Text;
+using Optional;
+using Optional.Linq;
 
-namespace SelfDescSuite
+namespace LookAndSay
 {
-    public enum ShowType { Result, Digits, Log};
-
-    public class ApplicationArguments
-    {
-        public int Seed { get; set; }
-        public int MaxIterations { get; set; }
-        public int MaxSeconds { get; set; }
-        public ShowType ShowResult { get; set; }
-    }
-
     class Program
     {
-
-        static int Main(string[] args)
+        static void Main(string[] args)
         {
-            var p = new FluentCommandLineParser<ApplicationArguments>();
+            CommandLine.Parser.Default.ParseArguments<Options>(args)
+                .WithParsed(RunWithOptions)
+                .WithNotParsed(HandleErrors)
+                ;
+        }
 
-            p.Setup(arg => arg.Seed)
-             .As('s', "seed")
-             .WithDescription("Seed number to start the iteration")
-             .SetDefault(1);
+        private static void HandleErrors(IEnumerable<Error> errors)
+        {
+        }
 
-            p.Setup(arg => arg.MaxIterations)
-             .As('i', "maxIterations")
-             .WithDescription("Maximum iterations")
-             .SetDefault(10);
+        private static void RunWithOptions(Options options)
+        {
+            var seed = options.Seed.HasValue ? options.Seed.Value : 1;
+            var maxTimeOpt = options.MaxSeconds.ToOption().Select(TimeSpan.FromSeconds);
+            var maxit = options.MaxIterations.ToOption();
+            var maxIterationsOpt = maxTimeOpt.Match(some: _ => maxit, none: ()=>maxit.Else(10.Some()));
+            var showType = options.ShowResult;
 
-            p.Setup(a => a.MaxSeconds)
-             .As('m', "maxSeconds")
-             .WithDescription("Maximum time in seconds for an iteration");
+            Console.WriteLine($"Seed={seed} MaxTime={maxTimeOpt.Select(Helpers.PrettyPrint)} MaxIterations={maxIterationsOpt} Show={showType}");      
+            Console.WriteLine($"----------------");
 
-            p.Setup(a => a.ShowResult)
-             .As('r', "showResult")
-             .WithDescription("Result type. Result: result number; Digits: number of digits in the result; Log: Log10 of number of digits")
-             .SetDefault(ShowType.Result);
-
-            p.SetupHelp("?", "help")
-                .Callback(text => Console.WriteLine(text));
-
-            var result = p.Parse(args);
-
-            if (result.HasErrors)
-            {
-                Console.WriteLine(result.ErrorText);
-                p.HelpOption.ShowHelp(p.Options);
-                return 1;
-            }
-
-            if (result.HelpCalled)
-            {
-                return 0;
-            }
-
-            var seed = p.Object.Seed.ToString();
-            var maxTime = p.Object.MaxSeconds > 0 ? TimeSpan.FromSeconds(p.Object.MaxSeconds) : TimeSpan.MaxValue;
-            var maxIterations = p.Object.MaxIterations;
-            var showType = p.Object.ShowResult;
-
-            Console.WriteLine($"Seed: {seed}");
-            Console.WriteLine($"----");
-
-            seed.Iterate(LookAndSay.Describe)
-                .Take(maxIterations+1)
+            seed.ToString()
+                .Iterate(StringExtensions.Describe)
+                .Optionaly(maxIterationsOpt, (source, maxIt) => source.Take(maxIt+1)) // adding one since 0 is seed
                 .Profile()
-                .TakeWhile(t => t.Item2 < maxTime)
-                .ForEach((t,i) => Console.WriteLine($"{i,3} | {ShowItem(t.Item1, showType)} | {t.Item2.PrettyPrint()}"));
-
-            return 0;
+                .Optionaly(maxTimeOpt, (source, maxTime) => source.TakeWhileWithLast(profiled => profiled.Tag < maxTime))
+                .ForEach((profiled,i) =>
+                    Console.WriteLine($"{i,3} | {ShowItem(profiled, showType)} | {profiled.Tag.PrettyPrint()}"))
+                ;
         }
 
         private static string ShowItem(string str, ShowType type)
         {
             switch (type)
             {
-                case ShowType.Result:
+                case ShowType.Raw:
                     return str;
                 case ShowType.Digits:
                     return str.Length.ToString();
@@ -87,7 +57,5 @@ namespace SelfDescSuite
             }
             return string.Empty;
         }
-
-
     }
 }
