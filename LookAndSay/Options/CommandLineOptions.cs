@@ -1,16 +1,17 @@
-using CommandLine;
+﻿using CommandLine;
 using CommandLine.Text;
+using LookAndSay.Render;
 using System.Collections.Generic;
 
-namespace LookAndSay
+namespace LookAndSay.Options
 {
     public enum ShowType { Raw, Digits, Log};
 
-    public class Options
+    public class CommandLineOptions
     {
         [Value(0, MetaValue="seed",
             HelpText="Seed number to start the iteration.")]
-        public int? Seed { get; set; }
+        public long? Seed { get; set; }
         
         [Option('m', "max_iterations",
             HelpText="Maximum number of iterations")]
@@ -24,5 +25,12 @@ namespace LookAndSay
             Default=ShowType.Raw,
             HelpText="Result type (Raw, Digits, Log)")]
         public ShowType ShowResult { get; set; }
+
+        [Option('R', "render",
+            Default=RenderType.Console,
+            HelpText="Render type (Console)")]
+        public RenderType RenderType {get;set;}
     }
+
+
 }

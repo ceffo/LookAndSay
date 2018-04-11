@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
+using System.Text;
+using LookAndSay.Models;
 using Optional;
 using Optional.Linq;
 
@@ -32,14 +35,14 @@ namespace LookAndSay
         /// <typeparam name="T"></typeparam>
         /// <param name="source"></param>
         /// <returns></returns>
-        public static IEnumerable<Tagged<T, TimeSpan>> Profile<T>(this IEnumerable<T> source)
+        public static IEnumerable<Profiled<T>> Profile<T>(this IEnumerable<T> source)
         {
             var sw = new Stopwatch();
             sw.Start();
 
             foreach (var v in source)
             {
-                yield return Tagged.Create(v, sw.Elapsed);
+                yield return new Profiled<T>(v, sw.Elapsed);
                 sw.Restart();
             }
         }
@@ -118,6 +121,31 @@ namespace LookAndSay
                 yield return x;
                 prevPredResult = predicate(x);
             }
+        }
+
+        public static string DescribeProperties<T>(this T obj)
+        {
+            var sb = new StringBuilder();
+            var type = obj.GetType();
+            var publicProperties = type.GetProperties(BindingFlags.Public|BindingFlags.Instance);
+            var optional = typeof(Option<>).GetGenericTypeDefinition();
+            foreach(var propInfo in publicProperties)
+            {
+                var propType = propInfo.PropertyType;
+                var value = propInfo.GetValue(obj);
+                if (propType.IsGenericType && propType.GetGenericTypeDefinition() == optional)
+                {
+                    var hasValueProp = propType.GetProperty("HasValue");
+                    var hasValue = (bool) hasValueProp.GetValue(value);
+                    if (!hasValue) continue;
+                    var valueor = propType.GetMethod("ValueOr", propType.GenericTypeArguments) ;
+
+                    value = valueor?.Invoke(value, new object[] { null }) ?? value;
+                }
+
+                sb.AppendLine($"{propInfo.Name}: {value}");
+            }
+            return sb.ToString();
         }
     }
 }
